@@ -900,3 +900,70 @@ Available options:
 \tfile2"""
     ret = run_with_error(cmd)
     assert re.search(re.escape(expected), ret) is not None
+
+
+def test_command_line_interpolations_evaluated_lazily(tmpdir):
+
+    cmd = [
+        sys.executable,
+        "tests/test_apps/simple_app/my_app.py",
+        "hydra/hydra_logging=disabled",
+        "hydra.sweep.dir=" + str(tmpdir),
+        "+foo=10,20",
+        "+bar=${foo}",
+        "--multirun",
+    ]
+    expected = """foo: 10
+bar: 10
+
+foo: 20
+bar: 20
+
+"""
+    ret = str(subprocess.check_output(cmd).decode("utf-8"))
+    assert ret == expected
+
+
+def test_multirun_config_overrides_evaluated_lazily(tmpdir):
+
+    cmd = [
+        sys.executable,
+        "tests/test_apps/simple_app/my_app.py",
+        "hydra.sweep.dir=" + str(tmpdir),
+        "hydra/hydra_logging=disabled",
+        "+foo=10,20",
+        "+bar=${foo}",
+        "--multirun",
+    ]
+    expected = """foo: 10
+bar: 10
+
+foo: 20
+bar: 20
+
+"""
+    ret = str(subprocess.check_output(cmd).decode("utf-8"))
+    assert ret == expected
+
+
+def test_multirun_defaults_override(tmpdir):
+
+    cmd = [
+        sys.executable,
+        "tests/test_apps/simple_app/my_app.py",
+        "--config-path=../../../hydra/test_utils/configs",
+        "--config-name=compose",
+        "--multirun",
+        "hydra.sweep.dir=" + str(tmpdir),
+        "hydra/hydra_logging=disabled",
+        "group1=file1,file2",
+    ]
+    expected = """foo: 10
+bar: 100
+
+foo: 20
+bar: 100
+
+"""
+    ret = str(subprocess.check_output(cmd).decode("utf-8"))
+    assert ret == expected

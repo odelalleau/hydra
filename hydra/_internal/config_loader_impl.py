@@ -193,6 +193,13 @@ class ConfigLoaderImpl(ConfigLoader):
         if strict is None:
             strict = self.default_strict
 
+        if config_name is not None and not self.repository.config_exists(config_name):
+            self.missing_config_error(
+                config_name=config_name,
+                msg=f"Cannot find primary config : {config_name}, check that it's in your config search path",
+                with_search_path=True,
+            )
+
         parsed_overrides = [self._parse_override(override) for override in overrides]
         filtered_parsed_overrides = []
         for x in parsed_overrides:
@@ -210,11 +217,13 @@ class ConfigLoaderImpl(ConfigLoader):
             else:
                 filtered_parsed_overrides.append(x)
 
-        if config_name is not None and not self.repository.config_exists(config_name):
-            self.missing_config_error(
-                config_name=config_name,
-                msg=f"Cannot find primary config : {config_name}, check that it's in your config search path",
-                with_search_path=True,
+        if run_mode == RunMode.RUN:
+            config_group_overrides, config_overrides = self.split_overrides(
+                filtered_parsed_overrides
+            )
+        else:
+            config_group_overrides, config_overrides = self.split_overrides(
+                parsed_overrides
             )
 
         # Load hydra config
@@ -242,10 +251,6 @@ class ConfigLoaderImpl(ConfigLoader):
         if config_name is not None:
             defaults.append(DefaultElement(config_group=None, config_name="__SELF__"))
         split_at = len(defaults)
-
-        config_group_overrides, config_overrides = self.split_overrides(
-            filtered_parsed_overrides
-        )
 
         self._combine_default_lists(defaults, job_defaults)
         ConfigLoaderImpl._apply_overrides_to_defaults(config_group_overrides, defaults)
@@ -379,6 +384,10 @@ class ConfigLoaderImpl(ConfigLoader):
                 )
         for owl in overrides:
             override = owl.override
+            # do not apply sweeper overrides at this time, they will be applied when they are broken into
+            # concrete values by the sweeper
+            if ConfigLoaderImpl._is_sweeper_override(override):
+                continue
             if override.value == "null":
                 if override.prefix not in (None, "~"):
                     ConfigLoaderImpl._raise_parse_override_error(owl.input_line)
@@ -503,16 +512,20 @@ class ConfigLoaderImpl(ConfigLoader):
                             del node[key[last_dot + 1 :]]
 
                 elif override.is_add():
-                    if (
-                        OmegaConf.select(cfg, override.key, throw_on_missing=False)
-                        is None
-                    ):
-                        with open_dict(cfg):
-                            OmegaConf.update(cfg, override.key, value)
+                    if ConfigLoaderImpl._is_sweeper_override(override):
+                        # add a placeholder
+                        OmegaConf.update(cfg, override.key, None)
                     else:
-                        raise HydraException(
-                            f"Could not append to config. An item is already at '{override.key}'."
-                        )
+                        if (
+                            OmegaConf.select(cfg, override.key, throw_on_missing=False)
+                            is None
+                        ):
+                            with open_dict(cfg):
+                                OmegaConf.update(cfg, override.key, value)
+                        else:
+                            raise HydraException(
+                                f"Could not append to config. An item is already at '{override.key}'."
+                            )
                 else:
                     try:
                         OmegaConf.update(cfg, override.key, value)
