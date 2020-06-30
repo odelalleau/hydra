@@ -902,7 +902,7 @@ Available options:
     assert re.search(re.escape(expected), ret) is not None
 
 
-def test_command_line_interpolations_evaluated_lazily(tmpdir):
+def test_command_line_interpolations_evaluated_lazily(tmpdir: Any) -> None:
 
     cmd = [
         sys.executable,
@@ -924,7 +924,7 @@ bar: 20
     assert ret == expected
 
 
-def test_multirun_config_overrides_evaluated_lazily(tmpdir):
+def test_multirun_config_overrides_evaluated_lazily(tmpdir: Any) -> None:
 
     cmd = [
         sys.executable,
@@ -946,7 +946,7 @@ bar: 20
     assert ret == expected
 
 
-def test_multirun_defaults_override(tmpdir):
+def test_multirun_defaults_override(tmpdir: Any) -> None:
 
     cmd = [
         sys.executable,
