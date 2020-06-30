@@ -921,7 +921,7 @@ bar: 20
 
 """
     ret = str(subprocess.check_output(cmd).decode("utf-8"))
-    assert ret == expected
+    assert ret == normalize_newlines(expected)
 
 
 def test_multirun_config_overrides_evaluated_lazily(tmpdir: Any) -> None:
@@ -943,7 +943,7 @@ bar: 20
 
 """
     ret = str(subprocess.check_output(cmd).decode("utf-8"))
-    assert ret == expected
+    assert ret == normalize_newlines(expected)
 
 
 def test_multirun_defaults_override(tmpdir: Any) -> None:
@@ -966,4 +966,4 @@ bar: 100
 
 """
     ret = str(subprocess.check_output(cmd).decode("utf-8"))
-    assert ret == expected
+    assert ret == normalize_newlines(expected)
