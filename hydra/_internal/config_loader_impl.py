@@ -8,7 +8,7 @@ import re
 import warnings
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import yaml
 from omegaconf import DictConfig, ListConfig, OmegaConf, _utils, open_dict
@@ -367,7 +367,9 @@ class ConfigLoaderImpl(ConfigLoader):
 
     # TODO: should be a function in the sweeper. somehow.
     @staticmethod
-    def _is_sweeper_override(override: ParsedOverride) -> bool:
+    def _is_sweeper_override(
+        override: Union[ParsedOverride, ParsedConfigOverride]
+    ) -> bool:
         return override.value is not None and "," in override.value
 
     @staticmethod
@@ -514,7 +516,7 @@ class ConfigLoaderImpl(ConfigLoader):
                 elif override.is_add():
                     if ConfigLoaderImpl._is_sweeper_override(override):
                         # add a placeholder
-                        OmegaConf.update(cfg, override.key, None)
+                        OmegaConf.update(cfg, override.key, "???")
                     else:
                         if (
                             OmegaConf.select(cfg, override.key, throw_on_missing=False)
@@ -527,13 +529,17 @@ class ConfigLoaderImpl(ConfigLoader):
                                 f"Could not append to config. An item is already at '{override.key}'."
                             )
                 else:
-                    try:
-                        OmegaConf.update(cfg, override.key, value)
-                    except (ConfigAttributeError, ConfigKeyError) as ex:
-                        raise HydraException(
-                            f"Could not override '{override.key}'. No match in config."
-                            f"\nTo append to your config use +{line}"
-                        ) from ex
+                    if ConfigLoaderImpl._is_sweeper_override(override):
+                        # add a placeholder
+                        OmegaConf.update(cfg, override.key, "???")
+                    else:
+                        try:
+                            OmegaConf.update(cfg, override.key, value)
+                        except (ConfigAttributeError, ConfigKeyError) as ex:
+                            raise HydraException(
+                                f"Could not override '{override.key}'. No match in config."
+                                f"\nTo append to your config use +{line}"
+                            ) from ex
             except OmegaConfBaseException as ex:
                 raise HydraException(f"Error merging override {line}") from ex
 
