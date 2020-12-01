@@ -141,7 +141,7 @@ def get_valid_filename(s: str) -> str:
 def setup_globals() -> None:
     def register(name: str, f: Any) -> None:
         try:
-            OmegaConf.register_resolver(name, f)
+            OmegaConf.new_register_resolver(name, f)
         except AssertionError:
             # calling it again in no_workers mode will throw. safe to ignore.
             pass
