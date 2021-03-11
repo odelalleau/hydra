@@ -478,6 +478,16 @@ def test_pass_extra_variables(instantiate_func: Any) -> None:
         ),
         param(
             TreeConf(
+                value=2,
+                left=None,
+                right=DictConfig(None),
+            ),
+            {},
+            Tree(value=2, left=None, right=None),
+            id="recursive:direct:dataclass:none",
+        ),
+        param(
+            TreeConf(
                 value=1,
                 left=TreeConf(value=21),
             ),
